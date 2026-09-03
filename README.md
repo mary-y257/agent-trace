@@ -57,12 +57,12 @@ node dist/cli.js show examples/session.jsonl --tool=run_tests
 ```
 events        17  (user 1, assistant 4, tool_call 6, tool_result 6)
 wall clock    7.400s
-tool time     3.728s  (50.4% of wall clock)
+tool time     3.729s  (50.4% of wall clock)
 tool calls    6  (6 completed, 0 pending, 1 failed = 16.7% failure rate)
 tokens        10330 in / 536 out = 10866 total
 
 tool         calls  fail   total     avg     max  share
-run_tests        2     1  3.515s  1.758s  1.760s  94.3%
+run_tests        2     1  3.516s  1.758s  1.760s  94.3%
 apply_patch      2     0   118ms    59ms    60ms   3.2%
 read_file        2     0    95ms    48ms    54ms   2.5%
 ```

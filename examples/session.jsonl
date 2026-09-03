@@ -1,0 +1,17 @@
+{"type":"user","ts":1767225600000,"text":"the parse test fails on windows"}
+{"type":"assistant","ts":1767225600900,"text":"let me look","usage":{"input_tokens":1180,"output_tokens":96}}
+{"type":"tool_call","ts":1767225600950,"id":"c1","name":"read_file","args":{"path":"src/parse.ts"}}
+{"type":"tool_result","ts":1767225601004,"id":"c1","ok":true,"durationMs":54,"output":"1.9 kB read"}
+{"type":"tool_call","ts":1767225601050,"id":"c2","name":"read_file","args":{"path":"test/parse.test.ts"}}
+{"type":"tool_result","ts":1767225601091,"id":"c2","ok":true,"durationMs":41,"output":"2.4 kB read"}
+{"type":"assistant","ts":1767225601400,"text":"asTimestamp handles ISO strings fine. The windows-only failure is in parseTrace: it splits the file on \\n, so a \\r\\n line still carries a trailing \\r into JSON.parse.","usage":{"input_tokens":1200,"output_tokens":64}}
+{"type":"tool_call","ts":1767225601450,"id":"c3","name":"apply_patch","args":{"file":"src/parse.ts","summary":"split on /\\r?\\n/ instead of \\n"}}
+{"type":"tool_result","ts":1767225601508,"id":"c3","ok":true,"durationMs":58,"output":"1 file changed"}
+{"type":"tool_call","ts":1767225601550,"id":"c4","name":"run_tests","args":{"pattern":"test/parse.test.ts"}}
+{"type":"tool_result","ts":1767225603310,"id":"c4","ok":false,"durationMs":1760,"error":"3 failed, 12 passed -- parse.test.ts:42 expected 6 events, got 5"}
+{"type":"assistant","ts":1767225603600,"text":"still short one event -- the blank-line check runs before the CRLF split, so a line that is only \\r is treated as content instead of being skipped.","usage":{"input_tokens":6200,"output_tokens":210}}
+{"type":"tool_call","ts":1767225603650,"id":"c5","name":"apply_patch","args":{"file":"src/parse.ts","summary":"trim before the blank-line check"}}
+{"type":"tool_result","ts":1767225603710,"id":"c5","ok":true,"durationMs":60,"output":"1 file changed"}
+{"type":"tool_call","ts":1767225603750,"id":"c6","name":"run_tests","args":{"pattern":"test/parse.test.ts"}}
+{"type":"tool_result","ts":1767225605506,"id":"c6","ok":true,"durationMs":1756,"output":"15 passed"}
+{"type":"assistant","ts":1767225607400,"text":"fixed -- windows line endings were leaking a stray \\r into the JSON parse.","usage":{"input_tokens":1750,"output_tokens":166}}
