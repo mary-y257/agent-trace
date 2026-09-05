@@ -125,6 +125,8 @@ they are equally happy with events you built yourself.
 npm test
 ```
 
+See [CHANGELOG.md](CHANGELOG.md) for release notes.
+
 ## License
 
 MIT (c) mary-y257
