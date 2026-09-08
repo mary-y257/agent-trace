@@ -77,6 +77,8 @@ read_file        2     0    95ms    48ms    54ms   2.5%
 | `--tool=<name>` | restrict `show` to a single tool |
 | `--max-arg=<n>` | truncate tool arguments to n characters (default 80) |
 | `--no-text` | hide user and assistant messages |
+| `--from=<time>` | restrict `show` to events at or after this time (ISO 8601 or epoch ms) |
+| `--to=<time>` | restrict `show` to events at or before this time (ISO 8601 or epoch ms) |
 | `--strict` | exit 1 if any line failed to parse |
 | `-h, --help` | usage |
 | `--version` | version |

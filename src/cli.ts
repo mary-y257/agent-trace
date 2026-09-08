@@ -15,6 +15,8 @@ Options:
   --tool=<name>   restrict show to a single tool
   --max-arg=<n>   truncate tool arguments to n characters (default 80)
   --no-text       hide user and assistant messages
+  --from=<time>   only show events at or after this time (ISO 8601 or epoch ms)
+  --to=<time>     only show events at or before this time (ISO 8601 or epoch ms)
   --strict        exit 1 if any line failed to parse
   -h, --help      show this help
   --version       show version number
@@ -40,6 +42,8 @@ interface Options {
   tool: string | undefined;
   maxArgLength: number | undefined;
   showText: boolean | undefined;
+  from: number | undefined;
+  to: number | undefined;
 }
 
 type OptionsResult = { ok: true; options: Options } | { ok: false; message: string };
@@ -68,7 +72,7 @@ export function runCli(argv: readonly string[], deps: CliDeps, out: CliOutput): 
     out.error(USAGE);
     return 2;
   }
-  const { file, json, strict, tool, maxArgLength, showText } = parsed.options;
+  const { file, json, strict, tool, maxArgLength, showText, from, to } = parsed.options;
 
   let text: string;
   try {
@@ -97,7 +101,7 @@ export function runCli(argv: readonly string[], deps: CliDeps, out: CliOutput): 
     const stats = computeStats(events);
     out.log(json ? JSON.stringify(stats, null, 2) : renderStats(stats));
   } else {
-    out.log(renderTimeline(events, { tool, maxArgLength, showText }));
+    out.log(renderTimeline(events, { tool, maxArgLength, showText, from, to }));
   }
   return 0;
 }
@@ -109,6 +113,8 @@ function parseOptions(command: Command, args: readonly string[]): OptionsResult 
   let tool: string | undefined;
   let maxArgLength: number | undefined;
   let showText: boolean | undefined;
+  let from: number | undefined;
+  let to: number | undefined;
 
   for (const arg of args) {
     if (arg === '--json') {
@@ -124,6 +130,16 @@ function parseOptions(command: Command, args: readonly string[]): OptionsResult 
       const n = Number(raw);
       if (!Number.isFinite(n) || n < 0) return { ok: false, message: `invalid --max-arg value "${raw}"` };
       maxArgLength = n;
+    } else if (arg.startsWith('--from=')) {
+      const raw = arg.slice('--from='.length);
+      const ts = parseTimeArg(raw);
+      if (ts === null) return { ok: false, message: `invalid --from value "${raw}"` };
+      from = ts;
+    } else if (arg.startsWith('--to=')) {
+      const raw = arg.slice('--to='.length);
+      const ts = parseTimeArg(raw);
+      if (ts === null) return { ok: false, message: `invalid --to value "${raw}"` };
+      to = ts;
     } else if (arg.startsWith('-')) {
       return { ok: false, message: `unknown option "${arg}"` };
     } else if (file === null) {
@@ -135,11 +151,24 @@ function parseOptions(command: Command, args: readonly string[]): OptionsResult 
 
   if (file === null) return { ok: false, message: 'missing <file> argument' };
   if (json && command !== 'stats') return { ok: false, message: '--json only applies to stats' };
-  if (command !== 'show' && (tool !== undefined || maxArgLength !== undefined || showText !== undefined)) {
-    return { ok: false, message: `${command} does not accept --tool, --max-arg or --no-text` };
+  if (
+    command !== 'show' &&
+    (tool !== undefined || maxArgLength !== undefined || showText !== undefined || from !== undefined || to !== undefined)
+  ) {
+    return { ok: false, message: `${command} does not accept --tool, --max-arg, --no-text, --from or --to` };
+  }
+  if (from !== undefined && to !== undefined && from > to) {
+    return { ok: false, message: '--from must not be after --to' };
   }
 
-  return { ok: true, options: { file, json, strict, tool, maxArgLength, showText } };
+  return { ok: true, options: { file, json, strict, tool, maxArgLength, showText, from, to } };
+}
+
+/** Accepts an epoch-millisecond integer or anything Date.parse understands (e.g. ISO 8601). */
+function parseTimeArg(raw: string): number | null {
+  if (/^-?\d+$/.test(raw)) return Number(raw);
+  const parsed = Date.parse(raw);
+  return Number.isNaN(parsed) ? null : parsed;
 }
 
 function readInput(file: string): string {

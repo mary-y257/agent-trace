@@ -116,6 +116,44 @@ test('show --no-text hides user and assistant lines', () => {
   assert.equal(out.logs[0].includes('run the tests'), false);
 });
 
+test('show --from/--to restricts the timeline to a time window', () => {
+  const out = capture();
+  const code = runCli(['show', '--from=1100', '--to=1300', 'session.jsonl'], fakeDeps({ 'session.jsonl': SESSION }), out);
+  assert.equal(code, 0);
+  assert.equal(out.logs[0].includes('run the tests'), false);
+  assert.match(out.logs[0], /run_tests/);
+});
+
+test('--from accepts an ISO 8601 timestamp', () => {
+  const out = capture();
+  const code = runCli(
+    ['show', '--from=1970-01-01T00:00:01.100Z', 'session.jsonl'],
+    fakeDeps({ 'session.jsonl': SESSION }),
+    out,
+  );
+  assert.equal(code, 0);
+  assert.equal(out.logs[0].includes('run the tests'), false);
+  assert.match(out.logs[0], /run_tests/);
+});
+
+test('an invalid --from value is a usage error', () => {
+  const out = capture();
+  const code = runCli(['show', '--from=nope', 'session.jsonl'], fakeDeps({ 'session.jsonl': SESSION }), out);
+  assert.equal(code, 2);
+  assert.match(out.errors[0], /invalid --from value/);
+});
+
+test('--from after --to is a usage error', () => {
+  const out = capture();
+  const code = runCli(
+    ['show', '--from=2000', '--to=1000', 'session.jsonl'],
+    fakeDeps({ 'session.jsonl': SESSION }),
+    out,
+  );
+  assert.equal(code, 2);
+  assert.match(out.errors[0], /--from must not be after --to/);
+});
+
 test('an invalid --max-arg value is a usage error', () => {
   const out = capture();
   const code = runCli(['show', '--max-arg=nope', 'session.jsonl'], fakeDeps({ 'session.jsonl': SESSION }), out);

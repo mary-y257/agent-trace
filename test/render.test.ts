@@ -102,6 +102,36 @@ test('renderTimeline --no-text hides user and assistant lines but keeps tool act
   assert.ok(lines[0].includes('read_file'));
 });
 
+test('renderTimeline --from/--to restricts the timeline to a time window', () => {
+  const events: TraceEvent[] = [
+    { type: 'user', ts: 0, text: 'too early' },
+    { type: 'tool_call', ts: 100, id: 'a', name: 'read_file', args: null },
+    { type: 'tool_result', ts: 110, id: 'a', ok: true, durationMs: 10, output: '', error: null },
+    { type: 'assistant', ts: 500, text: 'too late', usage: null },
+  ];
+  const lines = renderTimeline(events, { from: 100, to: 200 }).split('\n');
+  assert.equal(lines.length, 1);
+  assert.ok(lines[0].includes('read_file'));
+});
+
+test('renderTimeline --from/--to excludes events with no timestamp', () => {
+  const events: TraceEvent[] = [
+    { type: 'tool_call', ts: null, id: 'a', name: 'read_file', args: null },
+    { type: 'tool_result', ts: null, id: 'a', ok: true, durationMs: null, output: '', error: null },
+  ];
+  assert.equal(renderTimeline(events, { from: 0, to: 1000 }), '');
+});
+
+test('renderTimeline --to keeps orphan results that fall inside the window', () => {
+  const events: TraceEvent[] = [
+    { type: 'tool_result', ts: 5, id: 'zzz', ok: true, durationMs: null, output: '', error: null },
+    { type: 'tool_result', ts: 50, id: 'yyy', ok: true, durationMs: null, output: '', error: null },
+  ];
+  const lines = renderTimeline(events, { to: 10 }).split('\n');
+  assert.equal(lines.length, 1);
+  assert.ok(lines[0].includes('id=zzz'));
+});
+
 test('renderTimeline truncates long args to maxArgLength', () => {
   const events: TraceEvent[] = [
     { type: 'tool_call', ts: 0, id: 'a', name: 'write_file', args: { path: 'a', text: 'x'.repeat(50) } },

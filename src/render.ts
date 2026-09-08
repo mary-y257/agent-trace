@@ -10,6 +10,10 @@ export interface TimelineOptions {
   maxArgLength?: number;
   /** Include user/assistant lines. Default true; forced off when `tool` is set. */
   showText?: boolean;
+  /** Only include events at or after this epoch-ms timestamp. */
+  from?: number;
+  /** Only include events at or before this epoch-ms timestamp. */
+  to?: number;
 }
 
 const DEFAULT_MAX_ARG_LENGTH = 80;
@@ -38,6 +42,7 @@ export function renderStats(stats: TraceStats): string {
 export function renderTimeline(events: readonly TraceEvent[], options: TimelineOptions = {}): string {
   const maxArgLength = options.maxArgLength ?? DEFAULT_MAX_ARG_LENGTH;
   const toolFilter = options.tool;
+  const { from, to } = options;
   // A tool filter narrows the timeline to one tool's activity, so text lines
   // (which never belong to a tool) would just be noise.
   const showText = (options.showText ?? true) && !toolFilter;
@@ -50,26 +55,39 @@ export function renderTimeline(events: readonly TraceEvent[], options: TimelineO
   const lines: string[] = [];
   events.forEach((event, index) => {
     if (event.type === 'user') {
-      if (showText) lines.push(formatSimple('user', event.ts, firstTs, collapseWhitespace(event.text)));
+      if (showText && inWindow(event.ts, from, to)) {
+        lines.push(formatSimple('user', event.ts, firstTs, collapseWhitespace(event.text)));
+      }
       return;
     }
     if (event.type === 'assistant') {
-      if (showText) lines.push(formatSimple('assistant', event.ts, firstTs, formatAssistantText(event)));
+      if (showText && inWindow(event.ts, from, to)) {
+        lines.push(formatSimple('assistant', event.ts, firstTs, formatAssistantText(event)));
+      }
       return;
     }
     if (event.type === 'tool_call') {
       const span = spanByCallIndex.get(index);
-      if (!span || (toolFilter && span.call.name !== toolFilter)) return;
+      if (!span || (toolFilter && span.call.name !== toolFilter) || !inWindow(span.call.ts, from, to)) return;
       lines.push(formatSpan(span, firstTs, maxArgLength));
       return;
     }
     // tool_result: rendered above as part of its span, unless it never found one.
     if (toolFilter) return;
     const orphan = orphanByIndex.get(index);
-    if (orphan) lines.push(formatOrphan(orphan, firstTs));
+    if (orphan && inWindow(orphan.event.ts, from, to)) lines.push(formatOrphan(orphan, firstTs));
   });
 
   return lines.join('\n');
+}
+
+/** A window bound with no timestamp on the event can never be judged, so it's excluded. */
+function inWindow(ts: number | null, from: number | undefined, to: number | undefined): boolean {
+  if (from === undefined && to === undefined) return true;
+  if (ts === null) return false;
+  if (from !== undefined && ts < from) return false;
+  if (to !== undefined && ts > to) return false;
+  return true;
 }
 
 function firstTimestamp(events: readonly TraceEvent[]): number | null {
