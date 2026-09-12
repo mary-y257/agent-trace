@@ -124,6 +124,21 @@ test('show --from/--to restricts the timeline to a time window', () => {
   assert.match(out.logs[0], /run_tests/);
 });
 
+test('stats --from/--to restricts the aggregation to a time window', () => {
+  const out = capture();
+  const code = runCli(
+    ['stats', '--json', '--from=1050', 'session.jsonl'],
+    fakeDeps({ 'session.jsonl': SESSION }),
+    out,
+  );
+  assert.equal(code, 0);
+  const stats = JSON.parse(out.logs[0]);
+  // the user event at ts=1000 falls before the window, so it's excluded, but
+  // the tool_call/tool_result pair at ts=1100/1300 remains.
+  assert.deepEqual(stats.byType, { user: 0, assistant: 0, tool_call: 1, tool_result: 1 });
+  assert.equal(stats.toolCalls, 1);
+});
+
 test('--from accepts an ISO 8601 timestamp', () => {
   const out = capture();
   const code = runCli(

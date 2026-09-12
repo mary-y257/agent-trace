@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   computeStats,
+  filterByWindow,
   formatIssue,
   pairToolEvents,
   parseTrace,
@@ -37,6 +38,9 @@ test('index re-exports the full public API and it works end to end', () => {
   const stats = computeStats(events);
   assert.equal(stats.toolCalls, 1);
   assert.equal(stats.tokens.total, 12);
+
+  const windowed = filterByWindow(events, 1100, undefined);
+  assert.deepEqual(windowed.map((e) => e.type), ['tool_call', 'tool_result']);
 
   assert.match(renderStats(stats), /run_tests/);
   assert.match(renderTimeline(events), /run_tests\(\{"suite":"unit"\}\)/);

@@ -39,6 +39,25 @@ export interface TraceStats {
   tokens: { input: number; output: number; total: number };
 }
 
+/**
+ * Keep only events at or within [from, to] (epoch ms, either bound optional).
+ * An event with no timestamp can't be judged against a bound, so once either
+ * bound is set it's dropped rather than assumed in or out of range.
+ */
+export function filterByWindow(
+  events: readonly TraceEvent[],
+  from: number | undefined,
+  to: number | undefined,
+): TraceEvent[] {
+  if (from === undefined && to === undefined) return events.slice();
+  return events.filter((event) => {
+    if (event.ts === null) return false;
+    if (from !== undefined && event.ts < from) return false;
+    if (to !== undefined && event.ts > to) return false;
+    return true;
+  });
+}
+
 /** Aggregate a parsed trace. Pure: it never touches the filesystem or clock. */
 export function computeStats(events: readonly TraceEvent[]): TraceStats {
   const byType: Record<TraceEventType, number> = {

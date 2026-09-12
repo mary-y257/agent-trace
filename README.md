@@ -50,6 +50,9 @@ node dist/cli.js show examples/session.jsonl --max-arg=48
 
 # only one tool
 node dist/cli.js show examples/session.jsonl --tool=run_tests
+
+# stats for just part of the run
+node dist/cli.js stats examples/session.jsonl --from=1767225601000
 ```
 
 `stats` on the bundled example prints:
@@ -77,8 +80,8 @@ read_file        2     0    95ms    48ms    54ms   2.5%
 | `--tool=<name>` | restrict `show` to a single tool |
 | `--max-arg=<n>` | truncate tool arguments to n characters (default 80) |
 | `--no-text` | hide user and assistant messages |
-| `--from=<time>` | restrict `show` to events at or after this time (ISO 8601 or epoch ms) |
-| `--to=<time>` | restrict `show` to events at or before this time (ISO 8601 or epoch ms) |
+| `--from=<time>` | only include events at or after this time (ISO 8601 or epoch ms) |
+| `--to=<time>` | only include events at or before this time (ISO 8601 or epoch ms) |
 | `--strict` | exit 1 if any line failed to parse |
 | `-h, --help` | usage |
 | `--version` | version |
@@ -115,6 +118,9 @@ console.log(renderTimeline(events, { tool: 'run_tests', maxArgLength: 40 }));
 - `computeStats(events): TraceStats` -- wall clock, tool time, per-tool
   `calls / failures / totalMs / avgMs / maxMs / timeShare`, token totals,
   pending calls and orphan results.
+- `filterByWindow(events, from?, to?): TraceEvent[]` -- keep only events whose
+  timestamp falls within `[from, to]`; events with no timestamp are dropped
+  once either bound is set.
 - `renderTimeline(events, options?): string` -- the timeline text.
 - `renderStats(stats): string` -- the summary text.
 

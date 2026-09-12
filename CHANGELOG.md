@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- `stats` now accepts `--from`/`--to`, the same time window `show` already
+  supported, via the new `filterByWindow` export.
+
 ## 0.1.0
 
 - Parser (`parseTrace`, `parseTraceStrict`, `parseTraceLine`) accepts the field

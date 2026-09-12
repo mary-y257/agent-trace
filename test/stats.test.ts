@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeStats } from '../src/stats.ts';
+import { computeStats, filterByWindow } from '../src/stats.ts';
 import type { TraceEvent } from '../src/types.ts';
 
 test('computeStats on an empty trace', () => {
@@ -69,6 +69,35 @@ test('computeStats aggregates timing, tokens, tools and failures', () => {
   assert.equal(readFile.avgMs, 50);
   assert.equal(readFile.maxMs, 50);
   assert.equal(readFile.timeShare, 0.125);
+});
+
+test('filterByWindow with no bounds returns an equivalent copy', () => {
+  const events: TraceEvent[] = [{ type: 'user', ts: 1000, text: 'hi' }];
+  const filtered = filterByWindow(events, undefined, undefined);
+  assert.deepEqual(filtered, events);
+  assert.notEqual(filtered, events);
+});
+
+test('filterByWindow keeps only events within [from, to] and drops untimestamped ones', () => {
+  const events: TraceEvent[] = [
+    { type: 'user', ts: 1000, text: 'early' },
+    { type: 'assistant', ts: 1500, text: 'in range', usage: null },
+    { type: 'assistant', ts: 2000, text: 'late', usage: null },
+    { type: 'user', ts: null, text: 'no timestamp' },
+  ];
+
+  assert.deepEqual(
+    filterByWindow(events, 1200, 1800).map((e) => e.ts),
+    [1500],
+  );
+  assert.deepEqual(
+    filterByWindow(events, 1500, undefined).map((e) => e.ts),
+    [1500, 2000],
+  );
+  assert.deepEqual(
+    filterByWindow(events, undefined, 1500).map((e) => e.ts),
+    [1000, 1500],
+  );
 });
 
 test('tools are sorted by total time, most expensive first', () => {

@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { computeStats, formatIssue, parseTrace, renderStats, renderTimeline } from './index.ts';
+import { computeStats, filterByWindow, formatIssue, parseTrace, renderStats, renderTimeline } from './index.ts';
 
 const USAGE = `Usage: agent-trace <command> [options] <file>
 
@@ -15,8 +15,8 @@ Options:
   --tool=<name>   restrict show to a single tool
   --max-arg=<n>   truncate tool arguments to n characters (default 80)
   --no-text       hide user and assistant messages
-  --from=<time>   only show events at or after this time (ISO 8601 or epoch ms)
-  --to=<time>     only show events at or before this time (ISO 8601 or epoch ms)
+  --from=<time>   only include events at or after this time (ISO 8601 or epoch ms)
+  --to=<time>     only include events at or before this time (ISO 8601 or epoch ms)
   --strict        exit 1 if any line failed to parse
   -h, --help      show this help
   --version       show version number
@@ -98,7 +98,7 @@ export function runCli(argv: readonly string[], deps: CliDeps, out: CliOutput): 
   }
 
   if (command === 'stats') {
-    const stats = computeStats(events);
+    const stats = computeStats(filterByWindow(events, from, to));
     out.log(json ? JSON.stringify(stats, null, 2) : renderStats(stats));
   } else {
     out.log(renderTimeline(events, { tool, maxArgLength, showText, from, to }));
@@ -151,11 +151,8 @@ function parseOptions(command: Command, args: readonly string[]): OptionsResult 
 
   if (file === null) return { ok: false, message: 'missing <file> argument' };
   if (json && command !== 'stats') return { ok: false, message: '--json only applies to stats' };
-  if (
-    command !== 'show' &&
-    (tool !== undefined || maxArgLength !== undefined || showText !== undefined || from !== undefined || to !== undefined)
-  ) {
-    return { ok: false, message: `${command} does not accept --tool, --max-arg, --no-text, --from or --to` };
+  if (command !== 'show' && (tool !== undefined || maxArgLength !== undefined || showText !== undefined)) {
+    return { ok: false, message: `${command} does not accept --tool, --max-arg or --no-text` };
   }
   if (from !== undefined && to !== undefined && from > to) {
     return { ok: false, message: '--from must not be after --to' };
