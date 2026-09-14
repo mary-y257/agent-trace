@@ -15,6 +15,7 @@ Options:
   --tool=<name>   restrict show to a single tool
   --max-arg=<n>   truncate tool arguments to n characters (default 80)
   --no-text       hide user and assistant messages
+  --limit=<n>     show only the last n lines of the timeline (show only)
   --from=<time>   only include events at or after this time (ISO 8601 or epoch ms)
   --to=<time>     only include events at or before this time (ISO 8601 or epoch ms)
   --strict        exit 1 if any line failed to parse
@@ -44,6 +45,7 @@ interface Options {
   showText: boolean | undefined;
   from: number | undefined;
   to: number | undefined;
+  limit: number | undefined;
 }
 
 type OptionsResult = { ok: true; options: Options } | { ok: false; message: string };
@@ -72,7 +74,7 @@ export function runCli(argv: readonly string[], deps: CliDeps, out: CliOutput): 
     out.error(USAGE);
     return 2;
   }
-  const { file, json, strict, tool, maxArgLength, showText, from, to } = parsed.options;
+  const { file, json, strict, tool, maxArgLength, showText, from, to, limit } = parsed.options;
 
   let text: string;
   try {
@@ -101,7 +103,7 @@ export function runCli(argv: readonly string[], deps: CliDeps, out: CliOutput): 
     const stats = computeStats(filterByWindow(events, from, to));
     out.log(json ? JSON.stringify(stats, null, 2) : renderStats(stats));
   } else {
-    out.log(renderTimeline(events, { tool, maxArgLength, showText, from, to }));
+    out.log(renderTimeline(events, { tool, maxArgLength, showText, from, to, limit }));
   }
   return 0;
 }
@@ -115,6 +117,7 @@ function parseOptions(command: Command, args: readonly string[]): OptionsResult 
   let showText: boolean | undefined;
   let from: number | undefined;
   let to: number | undefined;
+  let limit: number | undefined;
 
   for (const arg of args) {
     if (arg === '--json') {
@@ -130,6 +133,11 @@ function parseOptions(command: Command, args: readonly string[]): OptionsResult 
       const n = Number(raw);
       if (!Number.isFinite(n) || n < 0) return { ok: false, message: `invalid --max-arg value "${raw}"` };
       maxArgLength = n;
+    } else if (arg.startsWith('--limit=')) {
+      const raw = arg.slice('--limit='.length);
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n < 0) return { ok: false, message: `invalid --limit value "${raw}"` };
+      limit = n;
     } else if (arg.startsWith('--from=')) {
       const raw = arg.slice('--from='.length);
       const ts = parseTimeArg(raw);
@@ -151,14 +159,17 @@ function parseOptions(command: Command, args: readonly string[]): OptionsResult 
 
   if (file === null) return { ok: false, message: 'missing <file> argument' };
   if (json && command !== 'stats') return { ok: false, message: '--json only applies to stats' };
-  if (command !== 'show' && (tool !== undefined || maxArgLength !== undefined || showText !== undefined)) {
-    return { ok: false, message: `${command} does not accept --tool, --max-arg or --no-text` };
+  if (
+    command !== 'show' &&
+    (tool !== undefined || maxArgLength !== undefined || showText !== undefined || limit !== undefined)
+  ) {
+    return { ok: false, message: `${command} does not accept --tool, --max-arg, --no-text or --limit` };
   }
   if (from !== undefined && to !== undefined && from > to) {
     return { ok: false, message: '--from must not be after --to' };
   }
 
-  return { ok: true, options: { file, json, strict, tool, maxArgLength, showText, from, to } };
+  return { ok: true, options: { file, json, strict, tool, maxArgLength, showText, from, to, limit } };
 }
 
 /** Accepts an epoch-millisecond integer or anything Date.parse understands (e.g. ISO 8601). */

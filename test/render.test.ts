@@ -132,6 +132,28 @@ test('renderTimeline --to keeps orphan results that fall inside the window', () 
   assert.ok(lines[0].includes('id=zzz'));
 });
 
+test('renderTimeline --limit keeps only the last n lines', () => {
+  const events: TraceEvent[] = [
+    { type: 'user', ts: 0, text: 'one' },
+    { type: 'user', ts: 1, text: 'two' },
+    { type: 'user', ts: 2, text: 'three' },
+  ];
+  const lines = renderTimeline(events, { limit: 2 }).split('\n');
+  assert.equal(lines.length, 2);
+  assert.ok(lines[0].includes('two'));
+  assert.ok(lines[1].includes('three'));
+});
+
+test('renderTimeline --limit=0 renders nothing', () => {
+  const events: TraceEvent[] = [{ type: 'user', ts: 0, text: 'one' }];
+  assert.equal(renderTimeline(events, { limit: 0 }), '');
+});
+
+test('renderTimeline --limit larger than the timeline keeps every line', () => {
+  const events: TraceEvent[] = [{ type: 'user', ts: 0, text: 'one' }];
+  assert.equal(renderTimeline(events, { limit: 100 }).split('\n').length, 1);
+});
+
 test('renderTimeline truncates long args to maxArgLength', () => {
   const events: TraceEvent[] = [
     { type: 'tool_call', ts: 0, id: 'a', name: 'write_file', args: { path: 'a', text: 'x'.repeat(50) } },

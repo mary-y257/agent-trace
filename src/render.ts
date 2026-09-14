@@ -14,6 +14,8 @@ export interface TimelineOptions {
   from?: number;
   /** Only include events at or before this epoch-ms timestamp. */
   to?: number;
+  /** Keep only the most recent n rendered lines, e.g. for a quick look at a long trace. */
+  limit?: number;
 }
 
 const DEFAULT_MAX_ARG_LENGTH = 80;
@@ -78,7 +80,9 @@ export function renderTimeline(events: readonly TraceEvent[], options: TimelineO
     if (orphan && inWindow(orphan.event.ts, from, to)) lines.push(formatOrphan(orphan, firstTs));
   });
 
-  return lines.join('\n');
+  // slice(-0) is slice(0), i.e. the whole array, so 0 needs its own branch.
+  const limited = options.limit === undefined ? lines : options.limit === 0 ? [] : lines.slice(-options.limit);
+  return limited.join('\n');
 }
 
 /** A window bound with no timestamp on the event can never be judged, so it's excluded. */

@@ -169,6 +169,36 @@ test('--from after --to is a usage error', () => {
   assert.match(out.errors[0], /--from must not be after --to/);
 });
 
+test('show --limit keeps only the last n timeline lines', () => {
+  const out = capture();
+  const code = runCli(['show', '--limit=1', 'session.jsonl'], fakeDeps({ 'session.jsonl': SESSION }), out);
+  assert.equal(code, 0);
+  assert.equal(out.logs[0].split('\n').length, 1);
+  assert.match(out.logs[0], /run_tests/);
+  assert.equal(out.logs[0].includes('run the tests'), false);
+});
+
+test('--limit is rejected on stats', () => {
+  const out = capture();
+  const code = runCli(['stats', '--limit=1', 'session.jsonl'], fakeDeps({ 'session.jsonl': SESSION }), out);
+  assert.equal(code, 2);
+  assert.match(out.errors[0], /does not accept --tool, --max-arg, --no-text or --limit/);
+});
+
+test('an invalid --limit value is a usage error', () => {
+  const out = capture();
+  const code = runCli(['show', '--limit=nope', 'session.jsonl'], fakeDeps({ 'session.jsonl': SESSION }), out);
+  assert.equal(code, 2);
+  assert.match(out.errors[0], /invalid --limit value/);
+});
+
+test('a negative --limit value is a usage error', () => {
+  const out = capture();
+  const code = runCli(['show', '--limit=-1', 'session.jsonl'], fakeDeps({ 'session.jsonl': SESSION }), out);
+  assert.equal(code, 2);
+  assert.match(out.errors[0], /invalid --limit value/);
+});
+
 test('an invalid --max-arg value is a usage error', () => {
   const out = capture();
   const code = runCli(['show', '--max-arg=nope', 'session.jsonl'], fakeDeps({ 'session.jsonl': SESSION }), out);
