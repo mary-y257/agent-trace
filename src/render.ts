@@ -16,6 +16,8 @@ export interface TimelineOptions {
   to?: number;
   /** Keep only the most recent n rendered lines, e.g. for a quick look at a long trace. */
   limit?: number;
+  /** Print newest-first. Applied after `limit`, so `limit` still selects the most recent lines. */
+  reverse?: boolean;
 }
 
 const DEFAULT_MAX_ARG_LENGTH = 80;
@@ -82,7 +84,8 @@ export function renderTimeline(events: readonly TraceEvent[], options: TimelineO
 
   // slice(-0) is slice(0), i.e. the whole array, so 0 needs its own branch.
   const limited = options.limit === undefined ? lines : options.limit === 0 ? [] : lines.slice(-options.limit);
-  return limited.join('\n');
+  const ordered = options.reverse ? limited.slice().reverse() : limited;
+  return ordered.join('\n');
 }
 
 /** A window bound with no timestamp on the event can never be judged, so it's excluded. */

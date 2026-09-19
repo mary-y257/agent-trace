@@ -154,6 +154,31 @@ test('renderTimeline --limit larger than the timeline keeps every line', () => {
   assert.equal(renderTimeline(events, { limit: 100 }).split('\n').length, 1);
 });
 
+test('renderTimeline --reverse prints newest-first', () => {
+  const events: TraceEvent[] = [
+    { type: 'user', ts: 0, text: 'one' },
+    { type: 'user', ts: 1, text: 'two' },
+    { type: 'user', ts: 2, text: 'three' },
+  ];
+  const lines = renderTimeline(events, { reverse: true }).split('\n');
+  assert.equal(lines.length, 3);
+  assert.ok(lines[0].includes('three'));
+  assert.ok(lines[1].includes('two'));
+  assert.ok(lines[2].includes('one'));
+});
+
+test('renderTimeline --reverse with --limit still keeps the most recent n lines', () => {
+  const events: TraceEvent[] = [
+    { type: 'user', ts: 0, text: 'one' },
+    { type: 'user', ts: 1, text: 'two' },
+    { type: 'user', ts: 2, text: 'three' },
+  ];
+  const lines = renderTimeline(events, { limit: 2, reverse: true }).split('\n');
+  assert.equal(lines.length, 2);
+  assert.ok(lines[0].includes('three'));
+  assert.ok(lines[1].includes('two'));
+});
+
 test('renderTimeline truncates long args to maxArgLength', () => {
   const events: TraceEvent[] = [
     { type: 'tool_call', ts: 0, id: 'a', name: 'write_file', args: { path: 'a', text: 'x'.repeat(50) } },

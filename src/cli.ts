@@ -16,6 +16,7 @@ Options:
   --max-arg=<n>   truncate tool arguments to n characters (default 80)
   --no-text       hide user and assistant messages
   --limit=<n>     show only the last n lines of the timeline (show only)
+  --reverse       print the timeline newest-first (show only)
   --from=<time>   only include events at or after this time (ISO 8601 or epoch ms)
   --to=<time>     only include events at or before this time (ISO 8601 or epoch ms)
   --strict        exit 1 if any line failed to parse
@@ -46,6 +47,7 @@ interface Options {
   from: number | undefined;
   to: number | undefined;
   limit: number | undefined;
+  reverse: boolean;
 }
 
 type OptionsResult = { ok: true; options: Options } | { ok: false; message: string };
@@ -74,7 +76,7 @@ export function runCli(argv: readonly string[], deps: CliDeps, out: CliOutput): 
     out.error(USAGE);
     return 2;
   }
-  const { file, json, strict, tool, maxArgLength, showText, from, to, limit } = parsed.options;
+  const { file, json, strict, tool, maxArgLength, showText, from, to, limit, reverse } = parsed.options;
 
   let text: string;
   try {
@@ -103,7 +105,7 @@ export function runCli(argv: readonly string[], deps: CliDeps, out: CliOutput): 
     const stats = computeStats(filterByWindow(events, from, to));
     out.log(json ? JSON.stringify(stats, null, 2) : renderStats(stats));
   } else {
-    out.log(renderTimeline(events, { tool, maxArgLength, showText, from, to, limit }));
+    out.log(renderTimeline(events, { tool, maxArgLength, showText, from, to, limit, reverse }));
   }
   return 0;
 }
@@ -118,6 +120,7 @@ function parseOptions(command: Command, args: readonly string[]): OptionsResult 
   let from: number | undefined;
   let to: number | undefined;
   let limit: number | undefined;
+  let reverse = false;
 
   for (const arg of args) {
     if (arg === '--json') {
@@ -126,6 +129,8 @@ function parseOptions(command: Command, args: readonly string[]): OptionsResult 
       strict = true;
     } else if (arg === '--no-text') {
       showText = false;
+    } else if (arg === '--reverse') {
+      reverse = true;
     } else if (arg.startsWith('--tool=')) {
       tool = arg.slice('--tool='.length);
     } else if (arg.startsWith('--max-arg=')) {
@@ -161,15 +166,15 @@ function parseOptions(command: Command, args: readonly string[]): OptionsResult 
   if (json && command !== 'stats') return { ok: false, message: '--json only applies to stats' };
   if (
     command !== 'show' &&
-    (tool !== undefined || maxArgLength !== undefined || showText !== undefined || limit !== undefined)
+    (tool !== undefined || maxArgLength !== undefined || showText !== undefined || limit !== undefined || reverse)
   ) {
-    return { ok: false, message: `${command} does not accept --tool, --max-arg, --no-text or --limit` };
+    return { ok: false, message: `${command} does not accept --tool, --max-arg, --no-text, --limit or --reverse` };
   }
   if (from !== undefined && to !== undefined && from > to) {
     return { ok: false, message: '--from must not be after --to' };
   }
 
-  return { ok: true, options: { file, json, strict, tool, maxArgLength, showText, from, to, limit } };
+  return { ok: true, options: { file, json, strict, tool, maxArgLength, showText, from, to, limit, reverse } };
 }
 
 /** Accepts an epoch-millisecond integer or anything Date.parse understands (e.g. ISO 8601). */

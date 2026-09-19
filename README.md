@@ -81,6 +81,7 @@ read_file        2     0    95ms    48ms    54ms   2.5%
 | `--max-arg=<n>` | truncate tool arguments to n characters (default 80) |
 | `--no-text` | hide user and assistant messages |
 | `--limit=<n>` | show only the last n lines of the `show` timeline |
+| `--reverse` | print the `show` timeline newest-first |
 | `--from=<time>` | only include events at or after this time (ISO 8601 or epoch ms) |
 | `--to=<time>` | only include events at or before this time (ISO 8601 or epoch ms) |
 | `--strict` | exit 1 if any line failed to parse |

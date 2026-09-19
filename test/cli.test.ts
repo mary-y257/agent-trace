@@ -178,11 +178,27 @@ test('show --limit keeps only the last n timeline lines', () => {
   assert.equal(out.logs[0].includes('run the tests'), false);
 });
 
+test('show --reverse prints the timeline newest-first', () => {
+  const out = capture();
+  const code = runCli(['show', '--reverse', 'session.jsonl'], fakeDeps({ 'session.jsonl': SESSION }), out);
+  assert.equal(code, 0);
+  const lines = out.logs[0].split('\n');
+  assert.ok(lines[0].includes('run_tests'));
+  assert.ok(lines[lines.length - 1].includes('run the tests'));
+});
+
+test('--reverse is rejected on stats', () => {
+  const out = capture();
+  const code = runCli(['stats', '--reverse', 'session.jsonl'], fakeDeps({ 'session.jsonl': SESSION }), out);
+  assert.equal(code, 2);
+  assert.match(out.errors[0], /does not accept --tool, --max-arg, --no-text, --limit or --reverse/);
+});
+
 test('--limit is rejected on stats', () => {
   const out = capture();
   const code = runCli(['stats', '--limit=1', 'session.jsonl'], fakeDeps({ 'session.jsonl': SESSION }), out);
   assert.equal(code, 2);
-  assert.match(out.errors[0], /does not accept --tool, --max-arg, --no-text or --limit/);
+  assert.match(out.errors[0], /does not accept --tool, --max-arg, --no-text, --limit or --reverse/);
 });
 
 test('an invalid --limit value is a usage error', () => {

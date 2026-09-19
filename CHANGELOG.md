@@ -4,6 +4,9 @@
 
 - `stats` now accepts `--from`/`--to`, the same time window `show` already
   supported, via the new `filterByWindow` export.
+- `show --limit=<n>` caps the timeline to the last n lines.
+- `show --reverse` prints the timeline newest-first, applied after `--limit`
+  so the limit still picks the most recent lines.
 
 ## 0.1.0
 
