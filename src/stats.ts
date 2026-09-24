@@ -2,6 +2,16 @@ import { pairToolEvents } from './pair.ts';
 import type { ToolSpan } from './pair.ts';
 import type { TraceEvent, TraceEventType } from './types.ts';
 
+/** One bucket of a {@link ToolStats.durationHistogram}: counts calls with durationMs <= maxMs (and > the previous bucket's maxMs). */
+export interface DurationBucket {
+  /** Upper bound in ms, inclusive. Infinity for the overflow bucket. */
+  maxMs: number;
+  count: number;
+}
+
+/** Bucket boundaries shared by every tool's histogram, so histograms can be compared across tools. */
+export const HISTOGRAM_BOUNDARIES_MS: readonly number[] = [10, 50, 100, 500, 1000, 5000, 10000, 30000];
+
 export interface ToolStats {
   name: string;
   /** Number of tool_call events for this tool. */
@@ -15,6 +25,8 @@ export interface ToolStats {
   maxMs: number | null;
   /** Fraction of all measured tool time spent in this tool, 0..1. */
   timeShare: number;
+  /** Distribution of measured durations across HISTOGRAM_BOUNDARIES_MS, plus an Infinity overflow bucket. */
+  durationHistogram: DurationBucket[];
 }
 
 export interface TraceStats {
@@ -110,7 +122,7 @@ export function computeStats(events: readonly TraceEvent[]): TraceStats {
 }
 
 function summariseTools(spans: readonly ToolSpan[], toolTimeMs: number): ToolStats[] {
-  const acc = new Map<string, ToolStats & { measured: number }>();
+  const acc = new Map<string, ToolStats & { measured: number; histogram: Map<number, number> }>();
 
   for (const span of spans) {
     const name = span.call.name;
@@ -125,7 +137,9 @@ function summariseTools(spans: readonly ToolSpan[], toolTimeMs: number): ToolSta
         avgMs: null,
         maxMs: null,
         timeShare: 0,
+        durationHistogram: [],
         measured: 0,
+        histogram: new Map(),
       };
       acc.set(name, row);
     }
@@ -136,6 +150,8 @@ function summariseTools(spans: readonly ToolSpan[], toolTimeMs: number): ToolSta
       row.totalMs += span.durationMs;
       row.measured += 1;
       row.maxMs = row.maxMs === null ? span.durationMs : Math.max(row.maxMs, span.durationMs);
+      const bucket = bucketBoundary(span.durationMs);
+      row.histogram.set(bucket, (row.histogram.get(bucket) ?? 0) + 1);
     }
   }
 
@@ -150,9 +166,22 @@ function summariseTools(spans: readonly ToolSpan[], toolTimeMs: number): ToolSta
       avgMs: row.measured === 0 ? null : row.totalMs / row.measured,
       maxMs: row.maxMs,
       timeShare: toolTimeMs === 0 ? 0 : row.totalMs / toolTimeMs,
+      durationHistogram: buildHistogram(row.histogram),
     });
   }
 
   rows.sort((a, b) => b.totalMs - a.totalMs || b.calls - a.calls || a.name.localeCompare(b.name));
   return rows;
+}
+
+/** The smallest boundary a duration fits under; Infinity if it exceeds all of them. */
+function bucketBoundary(durationMs: number): number {
+  for (const boundary of HISTOGRAM_BOUNDARIES_MS) {
+    if (durationMs <= boundary) return boundary;
+  }
+  return Infinity;
+}
+
+function buildHistogram(counts: ReadonlyMap<number, number>): DurationBucket[] {
+  return [...HISTOGRAM_BOUNDARIES_MS, Infinity].map((maxMs) => ({ maxMs, count: counts.get(maxMs) ?? 0 }));
 }

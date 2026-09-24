@@ -118,8 +118,11 @@ console.log(renderTimeline(events, { tool: 'run_tests', maxArgLength: 40 }));
 - `pairToolEvents(events): { spans, orphans }` -- calls matched to their results,
   each span carrying `durationMs` and `ok`.
 - `computeStats(events): TraceStats` -- wall clock, tool time, per-tool
-  `calls / failures / totalMs / avgMs / maxMs / timeShare`, token totals,
-  pending calls and orphan results.
+  `calls / failures / totalMs / avgMs / maxMs / timeShare / durationHistogram`,
+  token totals, pending calls and orphan results. `durationHistogram` buckets
+  each tool's measured durations against the shared `HISTOGRAM_BOUNDARIES_MS`
+  (plus an `Infinity` overflow bucket); it's included in `stats --json` but not
+  the table, since a histogram doesn't fit in a table row.
 - `filterByWindow(events, from?, to?): TraceEvent[]` -- keep only events whose
   timestamp falls within `[from, to]`; events with no timestamp are dropped
   once either bound is set.

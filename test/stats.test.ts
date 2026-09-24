@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeStats, filterByWindow } from '../src/stats.ts';
+import { computeStats, filterByWindow, HISTOGRAM_BOUNDARIES_MS } from '../src/stats.ts';
 import type { TraceEvent } from '../src/types.ts';
 
 test('computeStats on an empty trace', () => {
@@ -60,6 +60,8 @@ test('computeStats aggregates timing, tokens, tools and failures', () => {
   assert.equal(runTests.avgMs, 175);
   assert.equal(runTests.maxMs, 250);
   assert.equal(runTests.timeShare, 0.875);
+  // c2 measured 250ms (falls in the 500 bucket), c3 measured 100ms (falls in the 100 bucket).
+  assert.deepEqual(bucketCounts(runTests.durationHistogram), { 100: 1, 500: 1 });
 
   assert.equal(readFile.name, 'read_file');
   assert.equal(readFile.calls, 2);
@@ -69,6 +71,40 @@ test('computeStats aggregates timing, tokens, tools and failures', () => {
   assert.equal(readFile.avgMs, 50);
   assert.equal(readFile.maxMs, 50);
   assert.equal(readFile.timeShare, 0.125);
+  assert.deepEqual(bucketCounts(readFile.durationHistogram), { 50: 1 });
+});
+
+/** Collapses a DurationBucket[] down to its non-zero counts, keyed by maxMs, for easier assertions. */
+function bucketCounts(histogram: readonly { maxMs: number; count: number }[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const bucket of histogram) {
+    if (bucket.count > 0) out[String(bucket.maxMs)] = bucket.count;
+  }
+  return out;
+}
+
+test('durationHistogram covers every boundary plus an Infinity overflow bucket, even with no measured calls', () => {
+  const stats = computeStats([
+    { type: 'tool_call', ts: 0, id: 'a', name: 'noop', args: null },
+  ]);
+  const [tool] = stats.tools;
+  assert.deepEqual(
+    tool.durationHistogram.map((b) => b.maxMs),
+    [...HISTOGRAM_BOUNDARIES_MS, Infinity],
+  );
+  assert.ok(tool.durationHistogram.every((b) => b.count === 0));
+});
+
+test('durationHistogram buckets a duration that exceeds every boundary into the Infinity bucket', () => {
+  const events: TraceEvent[] = [
+    { type: 'tool_call', ts: 0, id: 'a', name: 'slow', args: null },
+    { type: 'tool_result', ts: 0, id: 'a', ok: true, durationMs: 60000, output: '', error: null },
+    { type: 'tool_call', ts: 0, id: 'b', name: 'slow', args: null },
+    { type: 'tool_result', ts: 0, id: 'b', ok: true, durationMs: 10, output: '', error: null },
+  ];
+  const stats = computeStats(events);
+  const [tool] = stats.tools;
+  assert.deepEqual(bucketCounts(tool.durationHistogram), { 10: 1, Infinity: 1 });
 });
 
 test('filterByWindow with no bounds returns an equivalent copy', () => {

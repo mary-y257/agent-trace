@@ -9,8 +9,8 @@ export type { LineResult } from './parse.ts';
 export { pairToolEvents, spansByTool } from './pair.ts';
 export type { ToolSpan, OrphanResult, PairedTrace } from './pair.ts';
 
-export { computeStats, filterByWindow } from './stats.ts';
-export type { ToolStats, TraceStats } from './stats.ts';
+export { computeStats, filterByWindow, HISTOGRAM_BOUNDARIES_MS } from './stats.ts';
+export type { ToolStats, TraceStats, DurationBucket } from './stats.ts';
 
 export { renderTimeline, renderStats } from './render.ts';
 export type { TimelineOptions } from './render.ts';

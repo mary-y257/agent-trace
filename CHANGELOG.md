@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Each tool in `stats` now carries a `durationHistogram`, bucketing its
+  measured call durations against the shared `HISTOGRAM_BOUNDARIES_MS`. It
+  shows up in `stats --json`; the table view is unchanged.
 - `stats` now accepts `--from`/`--to`, the same time window `show` already
   supported, via the new `filterByWindow` export.
 - `show --limit=<n>` caps the timeline to the last n lines.
